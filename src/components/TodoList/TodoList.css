@@ -1,0 +1,155 @@
+.todo-list-container {
+  margin: 20px auto;
+  padding: 20px;
+  max-width: 600px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.todo-list-container h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+/* Estilos para el formulario */
+.task-form {
+  display: flex;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.task-form input {
+  flex-grow: 1;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+
+.task-form button {
+  padding: 12px 20px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.task-form button:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+/* Estilos para la lista de tareas */
+.todo-list-container ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.todo-list-container li {
+  padding: 15px;
+  background-color: #fff;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.todo-list-container li:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.todo-list-container li.completed {
+  background-color: #e8f5e9;
+  border-left: 4px solid #4a8658;
+}
+
+.todo-list-container li.completed .task-text {
+  text-decoration: line-through;
+  color: #888;
+  opacity: 0.7;
+}
+
+/* Estilos para el texto de la tarea */
+.task-text {
+  flex-grow: 1;
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  margin-right: 15px;
+}
+
+/* Contenedor de botones */
+.task-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* Estilos base para los botones */
+.complete-btn,
+.delete-btn {
+  padding: 10px 14px;
+  border: none;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Botón completar (verde) */
+.complete-btn {
+  background-color: #6ee98b;
+}
+
+.complete-btn:hover {
+  background-color: #218838;
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+}
+
+.complete-btn:active {
+  transform: scale(1.05);
+}
+
+/* Botón eliminar (rojo) */
+.delete-btn {
+  background-color: #c0616a;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.4);
+}
+
+.delete-btn:active {
+  transform: scale(1.05);
+}
+
+/* Mensaje cuando no hay tareas */
+.todo-list-container ul:empty::after {
+  content: "No hay tareas pendientes. ¡Agrega una nueva!";
+  display: block;
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  font-style: italic;
+}

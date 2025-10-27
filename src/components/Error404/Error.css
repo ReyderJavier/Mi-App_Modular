@@ -1,0 +1,20 @@
+.error-page {
+  text-align: center;
+  margin-top: 100px;
+  color: #333;
+}
+
+.error-page h1 {
+  font-size: 180px;
+  color: crimson;
+}
+
+.error-page a {
+  display: inline-block;
+  margin-top: 20px;
+  text-decoration: none;
+  background-color: crimson;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+}
