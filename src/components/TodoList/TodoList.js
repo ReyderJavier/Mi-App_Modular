@@ -1,115 +1,216 @@
-import React, { useState, useEffect } from 'react';
-import { db } from '../../firebaseConfig';
-import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore"; 
-import './TodoList.css';
+import React, { useState, useEffect } from "react";
+import { db } from "../../firebaseConfig";
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  serverTimestamp,
+  query,
+  orderBy,
+} from "firebase/firestore";
+import "./TodoList.css";
 
 const TodoList = () => {
   const [tasks, setTasks] = useState([]);
+  const [completed, setCompleted] = useState([]);
+  const [historial, setHistorial] = useState([]);
+  const [inputValue, setInputValue] = useState("");
 
-  const [inputValue, setInputValue] = useState('');
-
+  // === Cargar datos de Firebase en tiempo real ===
   useEffect(() => {
-    // 1. Creamos una referencia a nuestra colección "tasks" en Firestore
-    const collectionRef = collection(db, "tasks");
+    const unsubTasks = onSnapshot(
+      query(collection(db, "tasks"), orderBy("createdAt", "asc")),
+      (snapshot) => {
+        setTasks(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      }
+    );
 
-    // 2. Creamos una consulta (query) para ordenar las tareas por fecha
-    const q = query(collectionRef, orderBy("createdAt", "asc"));
+    const unsubCompleted = onSnapshot(
+      query(collection(db, "completed"), orderBy("completedAt", "desc")),
+      (snapshot) => {
+        setCompleted(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      }
+    );
 
-    // 3. onSnapshot es el ¡ESCUCHADOR EN TIEMPO REAL!
-    // Se dispara una vez al inicio y luego CADA VEZ que los datos cambian
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const newTasks = [];
-      querySnapshot.forEach((doc) => {
-        newTasks.push({ 
-          ...doc.data(), 
-          id: doc.id // El ID del documento es importante
-        });
-      });
-      setTasks(newTasks); // Actualizamos nuestro estado de React
-    });
+    const unsubHistorial = onSnapshot(
+      query(collection(db, "historial"), orderBy("deletedAt", "desc")),
+      (snapshot) => {
+        setHistorial(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      }
+    );
 
-    // Esta función de limpieza se ejecuta cuando el componente se "desmonta"
-    // Evita fugas de memoria
-    return () => unsubscribe();
+    return () => {
+      unsubTasks();
+      unsubCompleted();
+      unsubHistorial();
+    };
+  }, []);
 
-  }, []); 
-
-  const handleAddTask = async (e) => { // La hacemos 'async'
+  // === Agregar tarea nueva ===
+  const handleAddTask = async (e) => {
     e.preventDefault();
-    if (inputValue.trim() === '') return;
-  
-    // ¡En lugar de solo 'setTasks', escribimos en la BD!
+    if (inputValue.trim() === "") return;
     await addDoc(collection(db, "tasks"), {
       text: inputValue,
       isComplete: false,
-      createdAt: serverTimestamp() // Marca de tiempo de Firebase
+      createdAt: serverTimestamp(),
     });
-  
-    setInputValue('');
-    // NOTA: No necesitamos 'setTasks' aquí.
-    // ¡'onSnapshot' detectará el nuevo documento y actualizará el estado por nosotros!
+    setInputValue("");
   };
 
-  const toggleTask = async (task) => { // Pasamos el objeto 'task' entero
-    // 1. Creamos una referencia al documento específico por su ID
+  // === Completar tarea → mover a colección "completed" ===
+  const completeTask = async (task) => {
     const taskRef = doc(db, "tasks", task.id);
-  
-    // 2. Actualizamos ese documento
-    await updateDoc(taskRef, {
-      isComplete: !task.isComplete // Invertimos el valor
+    await deleteDoc(taskRef);
+
+    await addDoc(collection(db, "completed"), {
+      text: task.text,
+      isComplete: true,
+      completedAt: serverTimestamp(),
     });
-    // De nuevo, ¡onSnapshot se encarga de actualizar la UI!
   };
 
-  const deleteTask = async (idToDelete) => {
-    // 1. Creamos una referencia al documento
-    const taskRef = doc(db, "tasks", idToDelete);
-  
-    // 2. Borramos el documento
+  // === Eliminar tarea → mover a colección "historial" ===
+  const deleteTask = async (task) => {
+    const taskRef = doc(db, "tasks", task.id);
     await deleteDoc(taskRef);
-    // ¡onSnapshot se encarga del resto!
+
+    await addDoc(collection(db, "historial"), {
+      text: task.text,
+      deletedAt: serverTimestamp(),
+    });
+  };
+
+  // === Restaurar tarea desde completadas ===
+  const restoreFromCompleted = async (task) => {
+    const taskRef = doc(db, "completed", task.id);
+    await deleteDoc(taskRef);
+
+    await addDoc(collection(db, "tasks"), {
+      text: task.text,
+      isComplete: false,
+      createdAt: serverTimestamp(),
+    });
+  };
+
+  // === Restaurar tarea desde historial ===
+  const restoreFromHistorial = async (task) => {
+    const taskRef = doc(db, "historial", task.id);
+    await deleteDoc(taskRef);
+
+    await addDoc(collection(db, "tasks"), {
+      text: task.text,
+      isComplete: false,
+      createdAt: serverTimestamp(),
+    });
+  };
+
+  // === Función para formatear fecha ===
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "Sin fecha";
+    const date = timestamp.toDate();
+    return date.toLocaleString("es-ES", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
     <div className="todo-list-container">
-      <h2>Lista de Tareas</h2>
+      <h2> Lista de Tareas</h2>
 
+      {/* Formulario para agregar tareas */}
       <form onSubmit={handleAddTask} className="add-task-form">
-        <input 
-          type="text" 
+        <input
+          type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Añade una nueva tarea..."
+          placeholder="Escribe una nueva tarea..."
         />
-        <button type="submit">Añadir</button>
+        <button type="submit">Agregar</button>
       </form>
 
-      <ul>
-        {tasks.map(task => (
-          <li key={task.id} className={task.completed ? 'completed' : ''}>
-            <span 
-              className="task-text"
-              onClick={() => toggleTask(task)}
-            >
-              {task.text}
-            </span>
-            <div className="task-buttons">
-              <button 
-                className="complete-btn"
-                onClick={() => toggleTask(task)}
-              >
-                {task.completed ? '↶' : '✓'}
-              </button>
-              <button 
-                className="delete-btn"
-                onClick={() => deleteTask(task.id)}
-              >
-                🗑
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {/* === Sección de tareas pendientes === */}
+      <h3> Tareas Pendientes</h3>
+      {tasks.length === 0 ? (
+        <p>No hay tareas pendientes</p>
+      ) : (
+        <ul>
+          {tasks.map((task) => (
+            <li key={task.id}>
+              <div className="task-info">
+                <span>{task.text}</span>
+                <small className="task-date">
+                   Creada: {formatDate(task.createdAt)}
+                </small>
+              </div>
+              <div className="task-buttons">
+                <button onClick={() => completeTask(task)}>✅</button>
+                <button onClick={() => deleteTask(task)}>🗑️</button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* === Sección de tareas completadas === */}
+      <div className="completed-list">
+        <h3>✅ Tareas Completadas</h3>
+        {completed.length === 0 ? (
+          <p>No hay tareas completadas</p>
+        ) : (
+          <ul>
+            {completed.map((item) => (
+              <li key={item.id} className="completed">
+                <div className="task-info">
+                  <span>{item.text}</span>
+                  <small className="task-date">
+                     Completada: {formatDate(item.completedAt)}
+                  </small>
+                </div>
+                <button
+                  className="restore-btn"
+                  onClick={() => restoreFromCompleted(item)}
+                >
+                  Restaurar
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* === Sección del historial === */}
+      <div className="historial-list">
+        <h3>🗑️ Historial de Tareas Eliminadas</h3>
+        {historial.length === 0 ? (
+          <p>No hay historial</p>
+        ) : (
+          <ul>
+            {historial.map((item) => (
+              <li key={item.id}>
+                <div className="task-info">
+                  <span>{item.text}</span>
+                  <small className="task-date">
+                     Eliminada: {formatDate(item.deletedAt)}
+                  </small>
+                </div>
+                <button
+                  className="restore-btn"
+                  onClick={() => restoreFromHistorial(item)}
+                >
+                  Restaurar
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 };
